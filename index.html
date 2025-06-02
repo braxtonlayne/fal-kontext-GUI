@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fal API GUI</title>
+    <style>
+        /* General Body/Page */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        #main-container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h2, h3, h4 {
+            color: #333;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Sections */
+        #settings-section,
+        #model-interaction-section,
+        #results-section {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 25px;
+            background-color: #fff;
+        }
+
+        /* Input Fields and Labels */
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        input[type="file"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Ensures padding doesn't affect overall width */
+            font-size: 1rem;
+        }
+
+        textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+
+        /* Buttons */
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #saveApiKeyButton {
+            margin-bottom: 10px; /* Spacing after save button */
+        }
+
+        /* Model Specific Inputs - hidden by default */
+        .model-specific-group {
+            padding: 10px;
+            border: 1px dashed #eee;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+        #imageEditInputs, #multiImageInputs {
+            /* display:none; is handled by inline style, can be managed by JS */
+        }
+
+
+        /* Image Results Area */
+        #imageResults {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px; /* Space between images */
+            padding: 10px;
+            border: 1px solid #eee;
+            background-color: #f9f9f9;
+            min-height: 100px; /* Ensure it's visible even when empty */
+            margin-top: 5px;
+            border-radius: 4px;
+        }
+
+        #imageResults img {
+            max-width: 100%; /* Make images responsive within their container */
+            height: auto;   /* Maintain aspect ratio */
+            max-height: 250px; /* Limit max height for very tall images */
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            object-fit: contain; /* Fit within dimensions without cropping */
+        }
+
+        /* Log and Error Areas */
+        #logArea,
+        #errorArea {
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+            white-space: pre-wrap; /* Preserve whitespace and newlines */
+            max-height: 200px;
+            overflow-y: auto; /* Add scroll for long content */
+        }
+
+        #logArea {
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            color: #495057;
+        }
+
+        #errorArea {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24; /* Bootstrap danger text color */
+            font-weight: bold;
+            /* Inline style color:red is already set, CSS provides more context */
+        }
+        #errorArea:empty, #logArea:empty {
+             /* display: none; */ /* Optionally hide if empty, but keeping visible for structure */
+             padding: 0;
+             border: none;
+             background-color: transparent;
+             min-height: 20px; /* ensure it takes some space for placeholder text */
+        }
+         #errorArea:not(:empty), #logArea:not(:empty) {
+            padding: 10px; /* Restore padding when there's content */
+         }
+
+
+        /* Utility for hidden elements */
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@fal-ai/client@latest/dist/fal.min.js"></script>
+</head>
+<body>
+    <div id="main-container">
+        <h2>Fal API GUI</h2>
+
+        <div id="settings-section">
+            <h3>Settings</h3>
+            <label for="apiKey">API Key:</label>
+            <input type="password" id="apiKey">
+            <button id="saveApiKeyButton">Save API Key</button>
+        </div>
+
+        <div id="model-interaction-section">
+            <h3>Model Interaction</h3>
+            <label for="modelSelect">Select Model:</label>
+            <select id="modelSelect">
+                <option value="fal-ai/flux-pro/kontext/max/text-to-image">Flux Pro Kontext Max Text-to-Image</option>
+                <option value="fal-ai/flux-pro/kontext/max/multi">Flux Pro Kontext Max Multi-Image</option>
+                <option value="fal-ai/flux-pro/kontext">Flux Pro Kontext Image Edit</option>
+            </select>
+
+            <div id="common-inputs">
+                <h4>Common Inputs</h4>
+                <label for="prompt">Prompt:</label>
+                <textarea id="prompt" rows="3"></textarea>
+
+                <label for="seed">Seed (Optional):</label>
+                <input type="number" id="seed" placeholder="e.g., 12345">
+
+                <label for="guidanceScale">Guidance Scale:</label>
+                <input type="number" id="guidanceScale" step="0.1" value="3.5">
+
+                <label for="numImages">Number of Images:</label>
+                <input type="number" id="numImages" value="1" min="1">
+
+                <label for="safetyTolerance">Safety Tolerance (1-6, default 2):</label>
+                <select id="safetyTolerance">
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                </select>
+
+                <label for="outputFormat">Output Format:</label>
+                <select id="outputFormat">
+                    <option value="jpeg">jpeg</option>
+                    <option value="png" selected>png</option>
+                </select>
+
+                <label for="aspectRatio">Aspect Ratio:</label>
+                <select id="aspectRatio">
+                    <option value="21:9">21:9</option>
+                    <option value="16:9">16:9</option>
+                    <option value="4:3">4:3</option>
+                    <option value="3:2">3:2</option>
+                    <option value="1:1" selected>1:1</option>
+                    <option value="2:3">2:3</option>
+                    <option value="3:4">3:4</option>
+                    <option value="9:16">9:16</option>
+                    <option value="9:21">9:21</option>
+                </select>
+            </div>
+
+            <div id="model-specific-inputs">
+                <h4>Model-Specific Inputs</h4>
+                <div id="imageEditInputs" class="model-specific-group" style="display:none;">
+                    <label for="imageUrl">Image URL (for Image Edit):</label>
+                    <input type="text" id="imageUrl" placeholder="Image URL or select file below">
+                    <label for="imageFile">Or Upload Image (for Image Edit):</label>
+                    <input type="file" id="imageFile" accept="image/*">
+                </div>
+                <div id="multiImageInputs" class="model-specific-group" style="display:none;">
+                    <p>Provide up to 2 images for the Multi-Image model:</p>
+                    <label for="imageUrlMulti1">Image 1 URL or File:</label>
+                    <input type="text" id="imageUrlMulti1" placeholder="Image URL 1 or select file below">
+                    <input type="file" id="imageFileMulti1" accept="image/*">
+
+                    <label for="imageUrlMulti2">Image 2 URL or File:</label>
+                    <input type="text" id="imageUrlMulti2" placeholder="Image URL 2 or select file below">
+                    <input type="file" id="imageFileMulti2" accept="image/*">
+                </div>
+            </div>
+
+            <button id="submitButton">Generate</button>
+        </div>
+
+        <div id="results-section">
+            <h3>Results</h3>
+            <div id="imageResults">
+                <!-- Images will be displayed here -->
+            </div>
+            <label for="logArea">Logs/Status:</label>
+            <div id="logArea"><!-- Logs will appear here --></div>
+            <label for="errorArea">Errors:</label>
+            <div id="errorArea" style="color:red;"><!-- Errors will appear here --></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Element References
+            const apiKeyInput = document.getElementById('apiKey');
+            const saveApiKeyButton = document.getElementById('saveApiKeyButton');
+            const modelSelect = document.getElementById('modelSelect');
+            const promptInput = document.getElementById('prompt');
+            const seedInput = document.getElementById('seed');
+            const guidanceScaleInput = document.getElementById('guidanceScale');
+            const numImagesInput = document.getElementById('numImages');
+            const safetyToleranceInput = document.getElementById('safetyTolerance');
+            const outputFormatInput = document.getElementById('outputFormat');
+            const aspectRatioInput = document.getElementById('aspectRatio');
+            const submitButton = document.getElementById('submitButton');
+
+            const imageEditInputs = document.getElementById('imageEditInputs');
+            const imageUrlInput = document.getElementById('imageUrl');
+            const imageFileInput = document.getElementById('imageFile');
+
+            const multiImageInputs = document.getElementById('multiImageInputs');
+            const imageUrlMulti1Input = document.getElementById('imageUrlMulti1');
+            const imageFileMulti1Input = document.getElementById('imageFileMulti1');
+            const imageUrlMulti2Input = document.getElementById('imageUrlMulti2');
+            const imageFileMulti2Input = document.getElementById('imageFileMulti2');
+
+            const imageResultsDiv = document.getElementById('imageResults');
+            const logArea = document.getElementById('logArea');
+            const errorArea = document.getElementById('errorArea');
+
+            // API Key Management
+            function loadApiKey() {
+                if (typeof fal === 'undefined') {
+                    errorArea.textContent = 'Error: Fal.ai client library (fal.js) not loaded. Check CDN link or internet connection. Some features may not work.';
+                    console.error('Fal.js not loaded');
+                    return;
+                }
+                const savedKey = localStorage.getItem('falApiKey');
+                if (savedKey) {
+                    apiKeyInput.value = savedKey;
+                    try {
+                        fal.config({ credentials: savedKey });
+                        logArea.textContent += 'Fal API key loaded and configured from localStorage.\n';
+                        console.log('Fal API key configured from localStorage.');
+                    } catch (e) {
+                        console.error('Error configuring Fal API key from localStorage:', e);
+                        errorArea.textContent = 'Error configuring Fal API key: ' + e.message;
+                    }
+                } else {
+                    logArea.textContent += 'No API key found in localStorage. Please save one.\n';
+                }
+            }
+
+            function saveApiKey() {
+                if (typeof fal === 'undefined') {
+                    errorArea.textContent = 'Error: Fal.ai client library (fal.js) not loaded. Cannot save API key.';
+                    console.error('Fal.js not loaded');
+                    alert('Error: Fal.ai client library not loaded.');
+                    return;
+                }
+                const newKey = apiKeyInput.value.trim();
+                if (newKey) {
+                    localStorage.setItem('falApiKey', newKey);
+                    try {
+                        fal.config({ credentials: newKey });
+                        logArea.textContent += 'API Key saved and configured!\n';
+                        alert('API Key saved and configured!');
+                    } catch (e) {
+                        console.error('Error configuring Fal API key:', e);
+                        errorArea.textContent = 'Error configuring Fal API key: ' + e.message;
+                        alert('Error saving API Key: ' + e.message);
+                    }
+                } else {
+                    errorArea.textContent = 'Please enter an API Key.';
+                    alert('Please enter an API Key.');
+                }
+            }
+
+            // Model Selection UI Logic
+            function updateModelSpecificInputs() {
+                const selectedModel = modelSelect.value;
+
+                // Hide all model-specific sections by default
+                imageEditInputs.style.display = 'none';
+                multiImageInputs.style.display = 'none';
+
+                if (selectedModel === 'fal-ai/flux-pro/kontext') { // Image Edit model
+                    imageEditInputs.style.display = 'block';
+                } else if (selectedModel === 'fal-ai/flux-pro/kontext/max/multi') { // Multi-Image model
+                    multiImageInputs.style.display = 'block';
+                }
+                // For "fal-ai/flux-pro/kontext/max/text-to-image", no specific inputs are shown beyond common ones.
+            }
+
+            // Event Listeners
+            if (saveApiKeyButton) {
+                saveApiKeyButton.addEventListener('click', saveApiKey);
+            } else {
+                console.error('Save API Key button not found');
+            }
+
+            if (modelSelect) {
+                modelSelect.addEventListener('change', updateModelSpecificInputs);
+            } else {
+                console.error('Model select dropdown not found');
+            }
+
+            // Initial setup
+            if (typeof fal !== 'undefined') {
+                 logArea.textContent = 'Fal.ai client library loaded.\n';
+            } else {
+                // Error already logged in loadApiKey, but we can add more context if needed
+                errorArea.textContent = 'CRITICAL: Fal.ai client library (fal.js) failed to load. Ensure the CDN link in <head> is correct and you have an internet connection. The application will not function correctly.';
+            }
+
+            loadApiKey(); // Load API key first
+            updateModelSpecificInputs(); // Then update UI based on model
+
+            // File Handling Logic
+            function getFileData(fileInput, textInput) {
+                return new Promise((resolve) => {
+                    const urlValue = textInput.value.trim();
+                    if (urlValue) {
+                        // Clear file input if URL is provided
+                        if (fileInput) fileInput.value = ''; // Clears the file selection
+                        resolve(urlValue);
+                        return;
+                    }
+                    if (fileInput && fileInput.files && fileInput.files[0]) {
+                        // Clear text input if file is provided
+                        if (textInput) textInput.value = ''; // Clears the text input
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            resolve(e.target.result);
+                        };
+                        reader.onerror = () => {
+                            console.error("FileReader error for " + fileInput.id);
+                            errorArea.textContent += `Error reading file ${fileInput.id}.\n`;
+                            resolve(null);
+                        };
+                        reader.readAsDataURL(fileInput.files[0]);
+                    } else {
+                        resolve(null);
+                    }
+                });
+            }
+
+            // API Call Logic
+            async function handleSubmit() {
+                if (typeof fal === 'undefined') {
+                    errorArea.textContent = 'Error: Fal.ai client library (fal.js) not loaded. Cannot submit request.';
+                    return;
+                }
+
+                submitButton.disabled = true;
+                submitButton.textContent = 'Generating...';
+                logArea.innerHTML = 'Preparing request...\n';
+                errorArea.textContent = '';
+                imageResultsDiv.innerHTML = '';
+
+                const currentApiKey = localStorage.getItem('falApiKey');
+                if (!currentApiKey) {
+                    errorArea.textContent = 'API Key not found. Please save your API Key in Settings.';
+                    logArea.innerHTML += 'API Key missing.\n';
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Generate';
+                    return;
+                }
+
+                try {
+                    fal.config({ credentials: currentApiKey });
+                } catch (e) {
+                    errorArea.textContent = 'Failed to configure Fal client with API Key: ' + e.message;
+                    logArea.innerHTML += 'Fal client configuration error.\n';
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Generate';
+                    return;
+                }
+
+                const selectedModel = modelSelect.value;
+                const promptValue = promptInput.value;
+                const seedValue = seedInput.value;
+                const guidanceScaleValue = parseFloat(guidanceScaleInput.value);
+                const numImagesValue = parseInt(numImagesInput.value) || 1;
+                const safetyToleranceValue = parseInt(safetyToleranceInput.value);
+                const outputFormatValue = outputFormatInput.value;
+                const aspectRatioValue = aspectRatioInput.value;
+
+                if (!promptValue && selectedModel === "fal-ai/flux-pro/kontext/max/text-to-image") {
+                     errorArea.textContent = 'Prompt is required for Text-to-Image model.';
+                     logArea.innerHTML += 'Prompt missing for selected model.\n';
+                     submitButton.disabled = false;
+                     submitButton.textContent = 'Generate';
+                     return;
+                }
+
+
+                const inputObject = {
+                    prompt: promptValue,
+                    guidance_scale: guidanceScaleValue,
+                    num_images: numImagesValue,
+                    safety_tolerance: safetyToleranceValue,
+                    output_format: outputFormatValue,
+                    aspect_ratio: aspectRatioValue,
+                };
+
+                if (seedValue) {
+                    inputObject.seed = parseInt(seedValue);
+                }
+
+                try {
+                    if (selectedModel === 'fal-ai/flux-pro/kontext') { // Image Edit
+                        const imageForEdit = await getFileData(imageFileInput, imageUrlInput);
+                        if (!imageForEdit) {
+                            errorArea.textContent = 'Image URL or file is required for Image Edit model.';
+                            logArea.innerHTML += 'Missing image for Image Edit model.\n';
+                            submitButton.disabled = false;
+                            submitButton.textContent = 'Generate';
+                            return;
+                        }
+                        inputObject.image_url = imageForEdit;
+                         if (!promptValue) { // Prompt is also required for image edit
+                            errorArea.textContent = 'Prompt is required for Image Edit model.';
+                            logArea.innerHTML += 'Prompt missing for Image Edit model.\n';
+                            submitButton.disabled = false;
+                            submitButton.textContent = 'Generate';
+                            return;
+                        }
+                    } else if (selectedModel === 'fal-ai/flux-pro/kontext/max/multi') { // Multi-Image
+                        inputObject.image_urls = [];
+                        const img1 = await getFileData(imageFileMulti1Input, imageUrlMulti1Input);
+                        const img2 = await getFileData(imageFileMulti2Input, imageUrlMulti2Input);
+
+                        if (img1) inputObject.image_urls.push(img1);
+                        if (img2) inputObject.image_urls.push(img2);
+
+                        if (inputObject.image_urls.length === 0) {
+                            errorArea.textContent = 'At least one image URL or file is required for Multi-Image model.';
+                            logArea.innerHTML += 'Missing images for Multi-Image model.\n';
+                            submitButton.disabled = false;
+                            submitButton.textContent = 'Generate';
+                            return;
+                        }
+                         if (!promptValue) { // Prompt is also required for multi-image
+                            errorArea.textContent = 'Prompt is required for Multi-Image model.';
+                            logArea.innerHTML += 'Prompt missing for Multi-Image model.\n';
+                            submitButton.disabled = false;
+                            submitButton.textContent = 'Generate';
+                            return;
+                        }
+                    }
+
+                    logArea.innerHTML += `Submitting request to ${selectedModel}...\n`;
+                    logArea.innerHTML += `Input: ${JSON.stringify(inputObject, null, 2)}\n`;
+
+                    const result = await fal.subscribe(selectedModel, {
+                        input: inputObject,
+                        logs: true,
+                        onQueueUpdate: (update) => {
+                            logArea.innerHTML += `Queue Status: ${update.status}\n`;
+                            if (update.logs) {
+                                update.logs.forEach(log => {
+                                    logArea.innerHTML += `LOG: ${log.message.replace(/\n/g, '<br>')}\n`;
+                                });
+                            }
+                            logArea.scrollTop = logArea.scrollHeight; // Auto-scroll
+                        }
+                    });
+
+                    logArea.innerHTML += 'Request completed.\n';
+                    if (result && result.images && Array.isArray(result.images)) {
+                        if (result.images.length === 0) {
+                            logArea.innerHTML += 'Received an empty array of images.\n';
+                        }
+                        result.images.forEach((imgData, index) => {
+                            const imgElement = document.createElement('img');
+                            imgElement.src = imgData.url; // Assuming images have a url property
+                            imgElement.alt = `Generated Image ${index + 1}`;
+                            // Basic styling is already in CSS, but can add more here if needed
+                            imageResultsDiv.appendChild(imgElement);
+                        });
+                        logArea.innerHTML += `Displayed ${result.images.length} image(s).\n`;
+                    } else {
+                        logArea.innerHTML += 'No images in result or unexpected result format.\n';
+                        console.log('Full result:', result);
+                        logArea.innerHTML += `Full result: ${JSON.stringify(result, null, 2)}\n`;
+                    }
+
+                } catch (error) {
+                    console.error("API Error:", error);
+                    errorArea.textContent = `API Error: ${error.message || JSON.stringify(error)}`;
+                    logArea.innerHTML += `Error: ${error.message || JSON.stringify(error)}\n`;
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Generate';
+                    logArea.scrollTop = logArea.scrollHeight; // Scroll to bottom
+                }
+            }
+
+            if (submitButton) {
+                submitButton.addEventListener('click', handleSubmit);
+            } else {
+                console.error("Submit button not found");
+            }
+
+        });
+    </script>
+</body>
+</html>
